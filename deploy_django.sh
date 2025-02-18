@@ -11,13 +11,17 @@ read SITENAME
 
 # Check if the /var/www/$SITENAME dir exists
 if [ -d "${ROOTDIR}${SITENAME}" ]; then
-    echo -n "Site name already exists. Do you want to Overwrite it?"
+    echo -n "Site name already exists. Do you want to Overwrite it? "
     read overwrite
 
 
     if overwrite == "Yes" || overwrite == "Y" || overwrite == "y"; then
-        sudo rm /etc/systemd/system/gunicorn_${SITENAME}.service
-        sudo rm /etc/nginx/sites-available/${SITENAME}.conf
+        echo "removing old configuration of gunicorn and sites available"
+
+         rm /etc/systemd/system/gunicorn_${SITENAME}.service
+         rm /etc/nginx/sites-available/${SITENAME}.conf
+
+         
 
     fi
     # echo "Error: directory /var/www/$SITENAME already exists"
@@ -261,15 +265,15 @@ chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
 
 
-sudo snap install certbot --classic
+snap install certbot --classic
 
-sudo certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
+certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
 # collect static files
 cd $HOMEDIR
 ./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
 
-sudo systemctl restart sshd
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl restart all
-sudo nginx -t && sudo systemctl restart nginx
+ systemctl restart sshd
+ supervisorctl reread
+ supervisorctl update
+ supervisorctl restart all
+ nginx -t &&  systemctl restart nginx
