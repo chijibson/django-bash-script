@@ -13,11 +13,13 @@ read SITENAME
 if [ -d "${ROOTDIR}${SITENAME}" ]; then
     echo -n "Site name already exists. Do you want to Overwrite it?"
     read overwrite
+
+
     if overwrite == "Yes" || overwrite == "Y" || overwrite == "y"; then
         sudo rm /etc/systemd/system/gunicorn_${SITENAME}.service
         sudo rm /etc/nginx/sites-available/${SITENAME}.conf
 
-
+    fi
     # echo "Error: directory /var/www/$SITENAME already exists"
     # exit 1
 fi
@@ -216,7 +218,7 @@ if is_celery == "Yes" || is_celery == "Y" || is_celery == "y"; then
     autorestart=true
     stdout_logfile=${HOMEDIR}logs/celery_beat.log
     redirect_stderr=true" > /etc/supervisor/conf.d/celery_beat.conf
-
+fi
 
 # activate Python virtual environment
 source $HOMEDIR/env/bin/activate
