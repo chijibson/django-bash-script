@@ -92,9 +92,9 @@ read is_celery
 
 # Install necessary dependencies and log to deploy.log
 echo "Installing Nginx, Python pip, and database server..."
-sudo apt install -y nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev &> $HOMEDIR/deploy.log
+sudo apt install nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev -y &> $HOMEDIR/deploy.log
 echo "Installing supervisor, redis"
-sudo apt install -y supervisor redis &> $HOMEDIR/deploy.log
+sudo apt install supervisor redis -y &> $HOMEDIR/deploy.log
 # Setup Python virtual environment, Django, Gunicorn, and Python MySQL connector
 mkdir -p $HOMEDIR/env 
 echo "Trying to set up a virtual environment..."
