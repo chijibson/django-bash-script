@@ -74,11 +74,14 @@ echo $SFTPPASS >> ./tmp
 cat ./tmp | passwd $SITENAME 2>> $HOMEDIR/deploy.log
 rm ./tmp
 
+# Input domain name
+echo -n "Enable Celery? (Y|N):"
+read is_celery
+
 
 # Install necessary dependencies and log to deploy.log
 echo "Installing Nginx, Python pip, and database server..."
-apt install -y nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev &> $HOMEDIR/deploy.log
-
+apt install -y nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev supervisor redis &> $HOMEDIR/deploy.log
 # Setup Python virtual environment, Django, Gunicorn, and Python MySQL connector
 mkdir -p $HOMEDIR/env 
 echo "Trying to set up a virtual environment..."
@@ -180,6 +183,32 @@ if [[ $DBPACKAGE != "" ]]; then
 	sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
 fi
 
+
+if is_celery == "Yes" || is_celery == "Y" || is_celery == "y"; then
+
+    echo "log" > ${HOMEDIR}/logs/celery.log 
+    echo "log" > ${HOMEDIR}/logs/celery_beat.log 
+
+    echo "[program:celery]
+    command=${HOMEDIR}/env/bin/celery -A ${APPNAME} worker -l info
+    directory=${HOMEDIR}/
+    user=$USER
+    autostart=true
+    autorestart=true  
+    stdout_logfile=${HOMEDIR}/logs/celery.log  
+    redirect_stderr=true
+    " > /etc/supervisor/conf.d/celery.conf
+
+    echo "[program:celery_beat]  
+    command=${HOMEDIR}/env/bin/celery -A ${APPNAME} beat --scheduler django -l info
+    directory=${HOMEDIR}/  
+    user=$USER  
+    autostart=true  
+    autorestart=true
+    stdout_logfile=${HOMEDIR}logs/celery_beat.log
+    redirect_stderr=true" > /etc/supervisor/conf.d/celery_beat.conf
+
+
 # activate Python virtual environment
 source $HOMEDIR/env/bin/activate
 
@@ -219,7 +248,17 @@ echo $GIT_IGNORE > /var/www/$SITENAME/.gitignore
 chmod -R 755 /var/www/$SITENAME/
 chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
-sudo systemctl restart sshd
+
+
+sudo snap install certbot --classic
+
+sudo certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
 # collect static files
 cd $HOMEDIR
 ./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
+
+sudo systemctl restart sshd
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl restart all
+sudo nginx -t && sudo systemctl restart nginx
