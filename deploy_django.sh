@@ -92,9 +92,9 @@ read is_celery
 
 # Install necessary dependencies and log to deploy.log
 echo "Installing Nginx, Python pip, and database server..."
-apt install -y nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev &> $HOMEDIR/deploy.log
+sudo apt install -y nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev &> $HOMEDIR/deploy.log
 echo "Installing supervisor, redis"
-apt install -y supervisor redis &> $HOMEDIR/deploy.log
+sudo apt install -y supervisor redis &> $HOMEDIR/deploy.log
 # Setup Python virtual environment, Django, Gunicorn, and Python MySQL connector
 mkdir -p $HOMEDIR/env 
 echo "Trying to set up a virtual environment..."
@@ -265,7 +265,7 @@ chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
 
 
-snap install certbot --classic
+sudo snap install certbot --classic
 
 certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
 # collect static files
