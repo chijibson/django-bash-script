@@ -15,13 +15,11 @@ if [ -d "${ROOTDIR}${SITENAME}" ]; then
     read overwrite
 
 
-    if overwrite == "Yes" || overwrite == "Y" || overwrite == "y"; then
+    if [[ overwrite == "Yes" || overwrite == "Y" || overwrite == "y" ]]; then
         echo "removing old configuration of gunicorn and sites available"
 
-         rm "/etc/systemd/system/gunicorn_${SITENAME}.service"
-         rm "/etc/nginx/sites-available/${SITENAME}.conf"
-
-         
+         rm -rf "/etc/systemd/system/gunicorn_${SITENAME}.service" | true
+         rm -rf "/etc/nginx/sites-available/${SITENAME}.conf" | true
 
     fi
     # echo "Error: directory /var/www/$SITENAME already exists"
@@ -199,7 +197,7 @@ if [[ $DBPACKAGE != "" ]]; then
 fi
 
 
-if is_celery == "Yes" || is_celery == "Y" || is_celery == "y"; then
+if [[ is_celery == "Yes" || is_celery == "Y" || is_celery == "y" ]]; then
 
     echo "log" > ${HOMEDIR}/logs/celery.log 
     echo "log" > ${HOMEDIR}/logs/celery_beat.log 
