@@ -92,8 +92,12 @@ read is_celery
 
 # Install necessary dependencies and log to deploy.log
 echo "Installing Nginx, Python pip, and database server..."
-sudo apt install nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev -y &> $HOMEDIR/deploy.log
-echo "Installing supervisor, redis"
+
+sudo apt-get -y update
+sudo apt-get upgrade -y
+
+sudo apt-get -y install nginx pkg-config python3-virtualenv python3-pip $DBPACKAGE libmysqlclient-dev &> $HOMEDIR/deploy.log
+echo "Installing supervisor, redis..."
 sudo apt install supervisor redis -y &> $HOMEDIR/deploy.log
 # Setup Python virtual environment, Django, Gunicorn, and Python MySQL connector
 mkdir -p $HOMEDIR/env 
@@ -193,9 +197,12 @@ if [[ $DBPACKAGE == "postgresql postgresql-contrib" ]]; then
     su postgres -c "createdb --owner $SITENAME $SITENAME"
 fi
 if [[ $DBPACKAGE != "" ]]; then
-	FINDTHIS="'default': {"
-	TOTHIS="'default': {\n        'ENGINE': '$DBENGINE',\n        'NAME': '$SITENAME',\n        'USER': '$SITENAME',\n        'PASSWORD': '$DBPASS',\n        'HOST': 'localhost',\n        'PORT': '$DBPORT',\n    },\n    'SQLite': {"
-	sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
+    if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
+
+        FINDTHIS="'default': {"
+        TOTHIS="'default': {\n        'ENGINE': '$DBENGINE',\n        'NAME': '$SITENAME',\n        'USER': '$SITENAME',\n        'PASSWORD': '$DBPASS',\n        'HOST': 'localhost',\n        'PORT': '$DBPORT',\n    },\n    'SQLite': {"
+        sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
+    fi
 fi
 
 
