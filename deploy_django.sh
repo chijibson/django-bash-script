@@ -11,17 +11,24 @@ read SITENAME
 
 # Check if the /var/www/$SITENAME dir exists
 if [ -d "${ROOTDIR}${SITENAME}" ]; then
-    echo "Error: directory /var/www/$SITENAME already exists"
-    exit 1
+    echo -n "Site name already exists. Do you want to Overwrite it?"
+    read overwrite
+    if overwrite == "Yes" || overwrite == "Y" || overwrite == "y"; then
+        sudo rm /etc/systemd/system/gunicorn_${SITENAME}.service
+        sudo rm /etc/nginx/sites-available/${SITENAME}.conf
+
+
+    # echo "Error: directory /var/www/$SITENAME already exists"
+    # exit 1
 fi
-if [ -f "/etc/systemd/system/gunicorn_${SITENAME}.service" ]; then
-    echo "Error: Gunicorn config file '/etc/systemd/system/gunicorn_${SITENAME}.service' already exists. Try using different site name or delete the Gunicorn config file"
-    exit 1
-fi
-if [ -f "/etc/nginx/sites-available/${SITENAME}.conf" ]; then
-    echo "Error: Nginx config file '/etc/nginx/sites-available/${SITENAME}.conf' already exists. Try using different site name or delete the Gunicorn config file"
-    exit 1
-fi
+# if [ -f "/etc/systemd/system/gunicorn_${SITENAME}.service" ]; then
+#     # echo "Error: Gunicorn config file '/etc/systemd/system/gunicorn_${SITENAME}.service' already exists. Try using different site name or delete the Gunicorn config file"
+#     # exit 1
+# fi
+# if [ -f "/etc/nginx/sites-available/${SITENAME}.conf" ]; then
+#     # echo "Error: Nginx config file '/etc/nginx/sites-available/${SITENAME}.conf' already exists. Try using different site name or delete the Gunicorn config file"
+#     # exit 1
+# fi
 
 # Input domain name
 echo -n "Enter your domain name:"
@@ -91,11 +98,13 @@ pip install gunicorn django $DBCONNECTOR >> $HOMEDIR/deploy.log
 # cd ${HOMEDIR}
 # django-admin startproject app .
 cd ${ROOTDIR}
+if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
+   # Add the domain to ALLOWED_HOSTS in the settings.py
+    FINDTHIS="ALLOWED_HOSTS = \[\]"
+    TOTHIS="ALLOWED_HOSTS = \[\'$DOMAIN\'\]"
+    sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
 
-# Add the domain to ALLOWED_HOSTS in the settings.py
-FINDTHIS="ALLOWED_HOSTS = \[\]"
-TOTHIS="ALLOWED_HOSTS = \[\'$DOMAIN\'\]"
-sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
+fi
 
 
 # Create Gunicorn config file
