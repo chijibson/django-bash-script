@@ -18,8 +18,8 @@ if [ -d "${ROOTDIR}${SITENAME}" ]; then
     if overwrite == "Yes" || overwrite == "Y" || overwrite == "y"; then
         echo "removing old configuration of gunicorn and sites available"
 
-         rm /etc/systemd/system/gunicorn_${SITENAME}.service
-         rm /etc/nginx/sites-available/${SITENAME}.conf
+         rm "/etc/systemd/system/gunicorn_${SITENAME}.service"
+         rm "/etc/nginx/sites-available/${SITENAME}.conf"
 
          
 
