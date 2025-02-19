@@ -85,6 +85,9 @@ echo $SFTPPASS >> ./tmp
 cat ./tmp | passwd $SITENAME 2>> $HOMEDIR/deploy.log
 rm ./tmp
 
+echo "Helping with Github Deployment issues"
+echo > $HOMEDIR/.ftp-deploy-sync-state.json
+
 # Input domain name
 echo -n "Enable Celery? (Y|N):"
 read is_celery
