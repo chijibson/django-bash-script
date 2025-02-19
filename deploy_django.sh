@@ -144,9 +144,22 @@ MasqueradeAddress   $DOMAIN
 RequireValidShell    off
 DefaultRoot         $HOMEDIR
 PassivePorts       50000 51000
+AllowOverwrite on  
 <IfModule mod_facts.c>
     FactsAdvertise off
-</IfModule>" > /etc/proftpd/proftpd.conf
+</IfModule>
+<Directory $HOMEDIR>
+Umask 022 022
+AllowOverwrite on
+    <Limit READ>
+        DenyAll
+        </Limit>
+
+        <Limit STOR CWD MKD RMD DELE XRMD XMKD>
+        AllowAll
+        </Limit>
+</Directory>
+" > /etc/proftpd/proftpd.conf
 
 sudo service proftpd restart
 sudo /etc/init.d/proftpd start
@@ -205,7 +218,7 @@ WantedBy=multi-user.target
 deactivate
 systemctl start gunicorn_$SITENAME
 systemctl enable gunicorn_$SITENAME
-
+systemctl daemon-reload
 if [[ $is_celery == "Yes" || $is_celery == "Y" || $is_celery == "y" ]]; then
 
     echo "Creating Celery and Celery Beat"
@@ -299,9 +312,10 @@ env/"
 echo $GIT_IGNORE > /var/www/$SITENAME/.gitignore
 
 echo "Assigning permissions to the working directory"
-chmod -R 764 /var/www/$SITENAME/
+chmod -R 755 /var/www/$SITENAME/
 chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
+
 
 
 sudo snap install certbot --classic
