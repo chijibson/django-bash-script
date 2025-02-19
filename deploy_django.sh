@@ -278,9 +278,9 @@ if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
     TOTHIS="0.0.0.0"
     sed -i -e "s/$FINDTHIS/$TOTHIS/g" /etc/mysql/mysql.conf.d/mysqld.cnf
     #remove this after now
-    echo > $HOMEDIR/mysql.log
+    # echo > $HOMEDIR/mysql.log
     #remove
-    if [ -f "${HOMEDIR}//mysql.log" ]; then
+    # if [ -f "${HOMEDIR}//mysql.log" ]; then
 
         echo -n "Do you want to regenerate Mysql Password? "
             read mysqlpassword
@@ -291,17 +291,17 @@ if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
             GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
             FLUSH PRIVILEGES;"
             mysql -uroot -e "$SQL"
+        
+        else
+
+            SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+            CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
+            GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
+            FLUSH PRIVILEGES;"
+            mysql -uroot -e "$SQL"
+
+            echo > $HOMEDIR/mysql.log
         fi
-    else
-
-        SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-        CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
-        GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
-        FLUSH PRIVILEGES;"
-        mysql -uroot -e "$SQL"
-
-        echo > $HOMEDIR/mysql.log
-    fi
 fi
 if [[ $DBPACKAGE == "postgresql postgresql-contrib" ]]; then
     su postgres -c "createuser -S -D -R -w $SITENAME"
