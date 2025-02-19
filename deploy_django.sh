@@ -312,7 +312,7 @@ env/"
 echo $GIT_IGNORE > /var/www/$SITENAME/.gitignore
 
 echo "Assigning permissions to the working directory"
-chmod -R 776 /var/www/$SITENAME/
+chmod -R 757 /var/www/$SITENAME/
 chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
 
