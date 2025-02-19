@@ -128,6 +128,7 @@ fi
 # " > /etc/ssh/sshd_config
 echo "Creating SFTP config file..."
 echo "download vsftpd"
+sudo apt-get install ftp -y
 sudo apt-get install vsftpd -y
 echo "Modify vsftpd.conf | uncomment #write_enable=YES"
 sudo sed -i '/write_enable=YES/s/^#//g' /etc/vsftpd.conf
@@ -193,8 +194,8 @@ systemctl enable gunicorn_$SITENAME
 if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
 	# Create a database and add the necessary config lines to app/settings.py
 
-    FINDTHIS="bind-address = 127.0.0.1"
-    FINDTHIS2="mysqlx-bind-address = 127.0.0.1"
+    FINDTHIS="bind-address     = 127.0.0.1"
+    FINDTHIS2="mysqlx-bind-address     = 127.0.0.1"
     TOTHIS="bind-address = 0.0.0.0"
     TOTHIS2="mysqlx-bind-address = 0.0.0.0"
     sed -i -e "s/$FINDTHIS/$TOTHIS/g" /etc/mysql/mysql.conf.d/mysqld.cnf
@@ -227,7 +228,7 @@ if [[ is_celery == "Yes" || is_celery == "Y" || is_celery == "y" ]]; then
     echo "log" > ${HOMEDIR}/logs/celery_beat.log 
 
     echo "[program:celery]
-    command=${HOMEDIR}/env/bin/celery -A ${APPNAME} worker -l info
+    command=${HOMEDIR}/env/bin/celery -A $APPNAME worker -l info
     directory=${HOMEDIR}/
     user=$USER
     autostart=true
@@ -237,7 +238,7 @@ if [[ is_celery == "Yes" || is_celery == "Y" || is_celery == "y" ]]; then
     " > /etc/supervisor/conf.d/celery.conf
 
     echo "[program:celery_beat]  
-    command=${HOMEDIR}/env/bin/celery -A ${APPNAME} beat --scheduler django -l info
+    command=${HOMEDIR}/env/bin/celery -A $APPNAME beat --scheduler django -l info
     directory=${HOMEDIR}/  
     user=$USER  
     autostart=true  
@@ -294,7 +295,6 @@ certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
 cd $HOMEDIR
 ./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
 
- systemctl restart sshd
  supervisorctl reread
  supervisorctl update
  supervisorctl restart all
