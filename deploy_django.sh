@@ -318,8 +318,9 @@ fi
 # fi
 
 echo "activate Python virtual environment"
-source $HOMEDIR/env/bin/activate
 if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
+    cd $HOMEDIR
+    source $HOMEDIR/env/bin/activate
     # configure static folder
     # echo 'STATIC_ROOT = os.path.join(BASE_DIR, "static")
     # MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -329,7 +330,7 @@ if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
 
     # # add import os to settings.py
     # sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
-
+    pip install -r requirements.txt
     python3 manage.py migrate >> $HOMEDIR/deploy.log
     python3 manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
 
