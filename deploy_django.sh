@@ -356,6 +356,7 @@ fi
 # collect static files
 cd $HOMEDIR
 
+ systemctl restart mysql
  supervisorctl reread
  supervisorctl update
  supervisorctl restart all
