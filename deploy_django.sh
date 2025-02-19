@@ -80,13 +80,19 @@ useradd $SITENAME -m -G sftp -s "/bin/false" -d "/var/www/$SITENAME" 2> $HOMEDIR
 if [ "$?" -ne 0 ]; then
 	echo "Can't add user"
 fi
-echo $SFTPPASS > ./tmp
-echo $SFTPPASS >> ./tmp
-cat ./tmp | passwd $SITENAME 2>> $HOMEDIR/deploy.log
-rm ./tmp
+else
+    echo $SFTPPASS > ./tmp
+    echo $SFTPPASS >> ./tmp
+    cat ./tmp | passwd $SITENAME 2>> $HOMEDIR/deploy.log
+    rm ./tmp
+fi
+
 
 echo "Helping with Github Deployment issues"
-echo > $HOMEDIR/.ftp-deploy-sync-state.json
+if [ ! -f "$HOMEDIR/.ftp-deploy-sync-state.json" ]; then
+
+    echo > $HOMEDIR/.ftp-deploy-sync-state.json
+fi
 
 # Input domain name
 echo -n "Enable Celery? (Y|N):"
@@ -164,56 +170,60 @@ AllowOverwrite on
 sudo service proftpd restart
 sudo /etc/init.d/proftpd start
 
-# Create NGINX config file
-echo "Creating NGINX config file..."
-echo "server {
-    listen 80;
-    server_name $DOMAIN www.$DOMAIN;
-    error_log /var/log/nginx/$SITENAME.error.log;
-    access_log /var/log/nginx/$SITENAME.access.log;
-    rewrite_log on;
-    server_tokens off;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection '1; mode=block';
+if  [ ! -f "/etc/nginx/sites-available/$SITENAME.conf" ]; then
+    # Create NGINX config file
+    echo "Creating NGINX config file..."
+    echo "server {
+        listen 80;
+        server_name $DOMAIN www.$DOMAIN;
+        error_log /var/log/nginx/$SITENAME.error.log;
+        access_log /var/log/nginx/$SITENAME.access.log;
+        rewrite_log on;
+        server_tokens off;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection '1; mode=block';
 
-    location /static/ {
-        root /var/www/$SITENAME;
-	expires 30d;
-        log_not_found off;
-        access_log off;
-    }
+        location /static/ {
+            root /var/www/$SITENAME;
+        expires 30d;
+            log_not_found off;
+            access_log off;
+        }
 
-    location /media/ {
-        root /var/www/$SITENAME;
-	expires 30d;
-        log_not_found off;
-        access_log off;
-     }
+        location /media/ {
+            root /var/www/$SITENAME;
+        expires 30d;
+            log_not_found off;
+            access_log off;
+        }
 
-    location / {
-        include proxy_params;
-        proxy_pass http://unix:/run/gunicorn_$SITENAME.sock;
-    }
-}" > /etc/nginx/sites-available/$SITENAME.conf
-ln -sf /etc/nginx/sites-available/$SITENAME.conf /etc/nginx/sites-enabled/$SITENAME.conf >> $HOMEDIR/deploy.log
-systemctl restart nginx
+        location / {
+            include proxy_params;
+            proxy_pass http://unix:/run/gunicorn_$SITENAME.sock;
+        }
+    }" > /etc/nginx/sites-available/$SITENAME.conf
+    ln -sf /etc/nginx/sites-available/$SITENAME.conf /etc/nginx/sites-enabled/$SITENAME.conf >> $HOMEDIR/deploy.log
+    systemctl restart nginx
 
-# Create Gunicorn config file
-echo "Creating Gunicorn config file..."
-echo "[Unit]
-Description=gunicorn daemon
-After=network.target
+fi
 
-[Service]
-User=$USER
-Group=www-data
-WorkingDirectory=${HOMEDIR}
-ExecStart=$HOMEDIR/env/bin/gunicorn --access-logfile - --workers 3 --bind unix:/run/gunicorn_$SITENAME.sock $APPNAME.wsgi:application
+if  [ ! -f "/etc/systemd/system/gunicorn_$SITENAME.service" ]; then
+    # Create Gunicorn config file
+    echo "Creating Gunicorn config file..."
+    echo "[Unit]
+    Description=gunicorn daemon
+    After=network.target
 
-[Install]
-WantedBy=multi-user.target
-" > /etc/systemd/system/gunicorn_$SITENAME.service
+    [Service]
+    User=$USER
+    Group=www-data
+    WorkingDirectory=${HOMEDIR}
+    ExecStart=$HOMEDIR/env/bin/gunicorn --access-logfile - --workers 3 --bind unix:/run/gunicorn_$SITENAME.sock $APPNAME.wsgi:application
 
+    [Install]
+    WantedBy=multi-user.target
+    " > /etc/systemd/system/gunicorn_$SITENAME.service
+fi
 # exit from the virtual environment and restart Gunicorn
 deactivate
 systemctl start gunicorn_$SITENAME
@@ -221,29 +231,33 @@ systemctl enable gunicorn_$SITENAME
 systemctl daemon-reload
 if [[ $is_celery == "Yes" || $is_celery == "Y" || $is_celery == "y" ]]; then
 
-    echo "Creating Celery and Celery Beat"
+    if  [ ! -f "/etc/supervisor/conf.d/celery.conf" ]; then
+        echo "Creating Celery and Celery Beat"
 
-    echo "log" >> ${HOMEDIR}/celery.log 
-    echo "log" >> ${HOMEDIR}/celery_beat.log 
+        echo "log" >> ${HOMEDIR}/celery.log 
+        echo "log" >> ${HOMEDIR}/celery_beat.log 
 
-    echo "[program:celery]
-    command=${HOMEDIR}/env/bin/celery -A $APPNAME worker -l info
-    directory=${HOMEDIR}/
-    user=$USER
-    autostart=true
-    autorestart=true  
-    stdout_logfile=${HOMEDIR}/celery.log  
-    redirect_stderr=true
-    " > /etc/supervisor/conf.d/celery.conf
 
-    echo "[program:celery_beat]  
-    command=${HOMEDIR}/env/bin/celery -A $APPNAME beat --scheduler django -l info
-    directory=${HOMEDIR}/  
-    user=$USER  
-    autostart=true  
-    autorestart=true
-    stdout_logfile=${HOMEDIR}/celery_beat.log
-    redirect_stderr=true" > /etc/supervisor/conf.d/celery_beat.conf
+        echo "[program:celery]
+        command=${HOMEDIR}/env/bin/celery -A $APPNAME worker -l info
+        directory=${HOMEDIR}/
+        user=$USER
+        autostart=true
+        autorestart=true  
+        stdout_logfile=${HOMEDIR}/celery.log  
+        redirect_stderr=true
+        " > /etc/supervisor/conf.d/celery.conf
+
+        echo "[program:celery_beat]  
+        command=${HOMEDIR}/env/bin/celery -A $APPNAME beat --scheduler django -l info
+        directory=${HOMEDIR}/  
+        user=$USER  
+        autostart=true  
+        autorestart=true
+        stdout_logfile=${HOMEDIR}/celery_beat.log
+        redirect_stderr=true" > /etc/supervisor/conf.d/celery_beat.conf
+
+    fi
 fi
 
 if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
@@ -264,44 +278,33 @@ if [[ $DBPACKAGE == "postgresql postgresql-contrib" ]]; then
     su postgres -c "psql -c \"ALTER USER $SITENAME WITH PASSWORD '$DBPASS';\""
     su postgres -c "createdb --owner $SITENAME $SITENAME"
 fi
-if [[ $DBPACKAGE != "" ]]; then
-    if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
+# if [[ $DBPACKAGE != "" ]]; then
+#     if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
 
-        FINDTHIS="'default': {"
-        TOTHIS="'default': {\n        'ENGINE': '$DBENGINE',\n        'NAME': '$SITENAME',\n        'USER': '$SITENAME',\n        'PASSWORD': '$DBPASS',\n        'HOST': 'localhost',\n        'PORT': '$DBPORT',\n    },\n    'SQLite': {"
-        sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
-    fi
-fi
+#         FINDTHIS="'default': {"
+#         TOTHIS="'default': {\n        'ENGINE': '$DBENGINE',\n        'NAME': '$SITENAME',\n        'USER': '$SITENAME',\n        'PASSWORD': '$DBPASS',\n        'HOST': 'localhost',\n        'PORT': '$DBPORT',\n    },\n    'SQLite': {"
+#         sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
+#     fi
+# fi
 
-# activate Python virtual environment
+echo "activate Python virtual environment"
 source $HOMEDIR/env/bin/activate
 if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
     # configure static folder
-    echo 'STATIC_ROOT = os.path.join(BASE_DIR, "static")
-    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-    MEDIA_URL = "/media/"' >> ${HOMEDIR}/${APPNAME}/settings.py
-    mkdir -p ${HOMEDIR}/static/
-    mkdir -p ${HOMEDIR}/media/
+    # echo 'STATIC_ROOT = os.path.join(BASE_DIR, "static")
+    # MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    # MEDIA_URL = "/media/"' >> ${HOMEDIR}/${APPNAME}/settings.py
+    # mkdir -p ${HOMEDIR}/static/
+    # mkdir -p ${HOMEDIR}/media/
 
-    # add import os to settings.py
-    sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
+    # # add import os to settings.py
+    # sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
 
+    ./manage.py migrate >> $HOMEDIR/deploy.log
     ./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
 
 fi
-# Print passwords and helpers
-echo "
-Done!
-MySQL/SFTP username: $SITENAME
-MySQL password: $DBPASS
-SFTP password: $SFTPPASS
 
-Things to do:
-Go to the working directory: cd $HOMEDIR
-Activate virtual environment: source $HOMEDIR/env/bin/activate
-Create Django super user: ./manage.py createsuperuser
-Apply migrations: ./manage.py makemigrations && ./manage.py migrate
-"
 
 # Create .gitignore file
 GIT_IGNORE="__pycache__/
@@ -316,11 +319,10 @@ chmod -R 757 /var/www/$SITENAME/
 chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
 
-
-
-sudo snap install certbot --classic
-
-certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
+if  [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    sudo snap install certbot --classic
+    certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
+fi
 # collect static files
 cd $HOMEDIR
 
@@ -328,3 +330,17 @@ cd $HOMEDIR
  supervisorctl update
  supervisorctl restart all
  nginx -t &&  systemctl restart nginx
+
+ # Print passwords and helpers
+echo "
+Done!
+MySQL/SFTP username: $SITENAME
+MySQL password: $DBPASS
+SFTP password: $SFTPPASS
+
+Things to do:
+Go to the working directory: cd $HOMEDIR
+Activate virtual environment: source $HOMEDIR/env/bin/activate
+Create Django super user: ./manage.py createsuperuser
+Apply migrations: ./manage.py makemigrations && ./manage.py migrate
+"
