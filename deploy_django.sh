@@ -330,8 +330,8 @@ if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
     # # add import os to settings.py
     # sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
 
-    ./manage.py migrate >> $HOMEDIR/deploy.log
-    ./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
+    python3 manage.py migrate >> $HOMEDIR/deploy.log
+    python3 manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
 
 fi
 
