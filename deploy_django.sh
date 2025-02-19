@@ -73,14 +73,25 @@ read APPNAME
 HOMEDIR=${ROOTDIR}${SITENAME}
 mkdir -p /var/www/$SITENAME
 
+
+
 # Create a new Linux user and add it to sftp group
 echo "Creating user $SITENAME..."
 groupadd sftp 2> /dev/null
 useradd $SITENAME -m -G sftp -s "/bin/false" -d "/var/www/$SITENAME" 2> $HOMEDIR/deploy.log
 if [ "$?" -ne 0 ]; then
 	echo "Can't add user"
-fi
 else
+    echo $SFTPPASS > ./tmp
+    echo $SFTPPASS >> ./tmp
+    cat ./tmp | passwd $SITENAME 2>> $HOMEDIR/deploy.log
+    rm ./tmp
+fi
+
+echo -n "Do you want to regenerate FTP Password? "
+    read ftppassword
+if [[ $ftppassword == "Yes" || $ftppassword == "Y" || $ftppassword == "y" ]]; then
+
     echo $SFTPPASS > ./tmp
     echo $SFTPPASS >> ./tmp
     cat ./tmp | passwd $SITENAME 2>> $HOMEDIR/deploy.log
@@ -266,12 +277,31 @@ if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
     FINDTHIS="127.0.0.1"
     TOTHIS="0.0.0.0"
     sed -i -e "s/$FINDTHIS/$TOTHIS/g" /etc/mysql/mysql.conf.d/mysqld.cnf
+    #remove this after now
+    echo > $HOMEDIR/mysql.log
+    #remove
+    if [ -f "${HOMEDIR}//mysql.log" ]; then
 
-	SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-	CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
-	GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
-	FLUSH PRIVILEGES;"
-	mysql -uroot -e "$SQL"
+        echo -n "Do you want to regenerate Mysql Password? "
+            read mysqlpassword
+        if [[ $mysqlpassword == "Yes" || $mysqlpassword == "Y" || $mysqlpassword == "y" ]]; then
+
+            SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+            ALTER USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
+            GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
+            FLUSH PRIVILEGES;"
+            mysql -uroot -e "$SQL"
+        fi
+    else
+
+        SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+        CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
+        GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
+        FLUSH PRIVILEGES;"
+        mysql -uroot -e "$SQL"
+
+        echo > $HOMEDIR/mysql.log
+    fi
 fi
 if [[ $DBPACKAGE == "postgresql postgresql-contrib" ]]; then
     su postgres -c "createuser -S -D -R -w $SITENAME"
