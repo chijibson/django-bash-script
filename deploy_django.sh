@@ -350,10 +350,10 @@ chmod -R 757 /var/www/$SITENAME/
 chown -R $SITENAME:$SITENAME /var/www/$SITENAME/
 chown root:root /var/www/$SITENAME
 
-if  [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+# if  [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
     sudo snap install certbot --classic
     certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
-fi
+# fi
 # collect static files
 cd $HOMEDIR
 
