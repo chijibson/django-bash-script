@@ -181,7 +181,7 @@ AllowOverwrite on
 sudo service proftpd restart
 sudo /etc/init.d/proftpd start
 
-if  [ ! -f "/etc/nginx/sites-available/$SITENAME.conf" ]; then
+# if  [ ! -f "/etc/nginx/sites-available/$SITENAME.conf" ]; then
     # Create NGINX config file
     echo "Creating NGINX config file..."
     echo "server {
@@ -216,9 +216,9 @@ if  [ ! -f "/etc/nginx/sites-available/$SITENAME.conf" ]; then
     ln -sf /etc/nginx/sites-available/$SITENAME.conf /etc/nginx/sites-enabled/$SITENAME.conf >> $HOMEDIR/deploy.log
     systemctl restart nginx
 
-fi
+# fi
 
-if  [ ! -f "/etc/systemd/system/gunicorn_$SITENAME.service" ]; then
+# if  [ ! -f "/etc/systemd/system/gunicorn_$SITENAME.service" ]; then
     # Create Gunicorn config file
     echo "Creating Gunicorn config file..."
     echo "[Unit]
@@ -234,7 +234,7 @@ if  [ ! -f "/etc/systemd/system/gunicorn_$SITENAME.service" ]; then
     [Install]
     WantedBy=multi-user.target
     " > /etc/systemd/system/gunicorn_$SITENAME.service
-fi
+# fi
 # exit from the virtual environment and restart Gunicorn
 deactivate
 systemctl start gunicorn_$SITENAME
