@@ -118,15 +118,22 @@ fi
 
 
 # Create Gunicorn config file
+# echo "Creating SFTP config file..."
+# echo "Match Group ${SITENAME}
+# ChrootDirectory %h
+# PasswordAuthentication yes
+# AllowTcpForwarding no
+# X11Forwarding no
+# ForceCommand internal-sftp
+# " > /etc/ssh/sshd_config
 echo "Creating SFTP config file..."
-echo "Match Group ${SITENAME}
-ChrootDirectory %h
-PasswordAuthentication yes
-AllowTcpForwarding no
-X11Forwarding no
-ForceCommand internal-sftp
-" > /etc/ssh/sshd_config
-
+echo "download vsftpd"
+sudo apt-get install vsftpd -y
+echo "Modify vsftpd.conf | uncomment #write_enable=YES"
+sudo sed -i '/write_enable=YES/s/^#//g' /etc/vsftpd.conf
+echo "Restart vsftpd service"
+sudo service vsftpd restart
+echo "Done"
 
 # Create NGINX config file
 echo "Creating NGINX config file..."
@@ -185,6 +192,14 @@ systemctl enable gunicorn_$SITENAME
 
 if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
 	# Create a database and add the necessary config lines to app/settings.py
+
+    FINDTHIS="bind-address = 127.0.0.1"
+    FINDTHIS2="mysqlx-bind-address = 127.0.0.1"
+    TOTHIS="bind-address = 0.0.0.0"
+    TOTHIS2="mysqlx-bind-address = 0.0.0.0"
+    sed -i -e "s/$FINDTHIS/$TOTHIS/g" /etc/mysql/mysql.conf.d/mysqld.cnf
+    sed -i -e "s/$FINDTHIS2/$TOTHIS2/g" /etc/mysql/mysql.conf.d/mysqld.cnf
+
 	SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 	CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
 	GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
@@ -233,17 +248,17 @@ fi
 
 # activate Python virtual environment
 source $HOMEDIR/env/bin/activate
+if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
+    # configure static folder
+    echo 'STATIC_ROOT = os.path.join(BASE_DIR, "static")
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    MEDIA_URL = "/media/"' >> ${HOMEDIR}/${APPNAME}/settings.py
+    mkdir -p ${HOMEDIR}/static/
+    mkdir -p ${HOMEDIR}/media/
 
-# configure static folder
-echo 'STATIC_ROOT = os.path.join(BASE_DIR, "static")
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-MEDIA_URL = "/media/"' >> ${HOMEDIR}/${APPNAME}/settings.py
-mkdir -p ${HOMEDIR}/static/
-mkdir -p ${HOMEDIR}/media/
-
-# add import os to settings.py
-sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
-
+    # add import os to settings.py
+    sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
+fi
 # Print passwords and helpers
 echo "
 Done!
