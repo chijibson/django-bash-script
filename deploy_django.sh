@@ -15,7 +15,7 @@ if [ -d "${ROOTDIR}${SITENAME}" ]; then
     read overwrite
 
 
-    if [[ overwrite == "Yes" || overwrite == "Y" || overwrite == "y" ]]; then
+    if [[ $overwrite == "Yes" || $overwrite == "Y" || $overwrite == "y" ]]; then
         echo "removing old configuration of gunicorn and sites available"
 
          rm -rf "/etc/systemd/system/gunicorn_${SITENAME}.service" | true
@@ -127,14 +127,26 @@ fi
 # ForceCommand internal-sftp
 # " > /etc/ssh/sshd_config
 echo "Creating SFTP config file..."
-echo "download vsftpd"
+echo "download proftpd"
 sudo apt-get install ftp -y
-sudo apt-get install vsftpd -y
-echo "Modify vsftpd.conf | uncomment #write_enable=YES"
-sudo sed -i '/write_enable=YES/s/^#//g' /etc/vsftpd.conf
-echo "Restart vsftpd service"
-sudo service vsftpd restart
-echo "Done"
+sudo apt-get install proftpd -y
+# echo "Modify vsftpd.conf | uncomment #write_enable=YES"
+# sudo sed -i '/write_enable=YES/s/^#//g' /etc/vsftpd.conf
+# echo "Restart vsftpd service"
+# sudo service vsftpd restart
+# echo "Done"
+echo "ServerName  $DOMAIN
+ServerType         standalone
+MasqueradeAddress   $DOMAIN
+RequireValidShell    off
+DefaultRoot         $HOMEDIR
+PassivePorts       50000 51000
+<IfModule mod_facts.c>
+    FactsAdvertise off
+</IfModule>" > /etc/proftpd/proftpd.conf
+
+sudo service proftpd restart
+sudo /etc/init.d/proftpd start
 
 # Create NGINX config file
 echo "Creating NGINX config file..."
@@ -191,38 +203,9 @@ deactivate
 systemctl start gunicorn_$SITENAME
 systemctl enable gunicorn_$SITENAME
 
-if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
-	# Create a database and add the necessary config lines to app/settings.py
+if [[ $is_celery == "Yes" || $is_celery == "Y" || $is_celery == "y" ]]; then
 
-    FINDTHIS="bind-address     = 127.0.0.1"
-    FINDTHIS2="mysqlx-bind-address     = 127.0.0.1"
-    TOTHIS="bind-address = 0.0.0.0"
-    TOTHIS2="mysqlx-bind-address = 0.0.0.0"
-    sed -i -e "s/$FINDTHIS/$TOTHIS/g" /etc/mysql/mysql.conf.d/mysqld.cnf
-    sed -i -e "s/$FINDTHIS2/$TOTHIS2/g" /etc/mysql/mysql.conf.d/mysqld.cnf
-
-	SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-	CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
-	GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
-	FLUSH PRIVILEGES;"
-	mysql -uroot -e "$SQL"
-fi
-if [[ $DBPACKAGE == "postgresql postgresql-contrib" ]]; then
-    su postgres -c "createuser -S -D -R -w $SITENAME"
-    su postgres -c "psql -c \"ALTER USER $SITENAME WITH PASSWORD '$DBPASS';\""
-    su postgres -c "createdb --owner $SITENAME $SITENAME"
-fi
-if [[ $DBPACKAGE != "" ]]; then
-    if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
-
-        FINDTHIS="'default': {"
-        TOTHIS="'default': {\n        'ENGINE': '$DBENGINE',\n        'NAME': '$SITENAME',\n        'USER': '$SITENAME',\n        'PASSWORD': '$DBPASS',\n        'HOST': 'localhost',\n        'PORT': '$DBPORT',\n    },\n    'SQLite': {"
-        sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
-    fi
-fi
-
-
-if [[ is_celery == "Yes" || is_celery == "Y" || is_celery == "y" ]]; then
+    echo "Creating Celery and Celery Beat"
 
     echo "log" > ${HOMEDIR}/logs/celery.log 
     echo "log" > ${HOMEDIR}/logs/celery_beat.log 
@@ -247,6 +230,33 @@ if [[ is_celery == "Yes" || is_celery == "Y" || is_celery == "y" ]]; then
     redirect_stderr=true" > /etc/supervisor/conf.d/celery_beat.conf
 fi
 
+if [[ $DBPACKAGE == "mysql-server" || $DBPACKAGE == "mariadb-server" ]]; then
+	# Create a database and add the necessary config lines to app/settings.py
+
+    FINDTHIS="127.0.0.1"
+    TOTHIS="0.0.0.0"
+    sed -i -e "s/$FINDTHIS/$TOTHIS/g" /etc/mysql/mysql.conf.d/mysqld.cnf
+
+	SQL="CREATE DATABASE IF NOT EXISTS $SITENAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+	CREATE USER '$SITENAME'@'%' IDENTIFIED BY '$DBPASS';
+	GRANT ALL PRIVILEGES ON $SITENAME.* TO '$SITENAME'@'%';
+	FLUSH PRIVILEGES;"
+	mysql -uroot -e "$SQL"
+fi
+if [[ $DBPACKAGE == "postgresql postgresql-contrib" ]]; then
+    su postgres -c "createuser -S -D -R -w $SITENAME"
+    su postgres -c "psql -c \"ALTER USER $SITENAME WITH PASSWORD '$DBPASS';\""
+    su postgres -c "createdb --owner $SITENAME $SITENAME"
+fi
+if [[ $DBPACKAGE != "" ]]; then
+    if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
+
+        FINDTHIS="'default': {"
+        TOTHIS="'default': {\n        'ENGINE': '$DBENGINE',\n        'NAME': '$SITENAME',\n        'USER': '$SITENAME',\n        'PASSWORD': '$DBPASS',\n        'HOST': 'localhost',\n        'PORT': '$DBPORT',\n    },\n    'SQLite': {"
+        sed -i -e "s/$FINDTHIS/$TOTHIS/g" ${HOMEDIR}/${APPNAME}/settings.py
+    fi
+fi
+
 # activate Python virtual environment
 source $HOMEDIR/env/bin/activate
 if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
@@ -259,6 +269,9 @@ if [ -f "${HOMEDIR}/${APPNAME}/settings.py" ]; then
 
     # add import os to settings.py
     sed -i '1s/^/import os\n/' ${HOMEDIR}/${APPNAME}/settings.py
+
+    ./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
+
 fi
 # Print passwords and helpers
 echo "
@@ -293,7 +306,6 @@ sudo snap install certbot --classic
 certbot -n -d ${DOMAIN} --nginx --agree-tos --email chijibson@gmail.com
 # collect static files
 cd $HOMEDIR
-./manage.py collectstatic --noinput >> $HOMEDIR/deploy.log
 
  supervisorctl reread
  supervisorctl update
