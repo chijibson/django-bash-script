@@ -207,8 +207,8 @@ if [[ $is_celery == "Yes" || $is_celery == "Y" || $is_celery == "y" ]]; then
 
     echo "Creating Celery and Celery Beat"
 
-    echo "log" > ${HOMEDIR}/logs/celery.log 
-    echo "log" > ${HOMEDIR}/logs/celery_beat.log 
+    echo "log" >> ${HOMEDIR}/celery.log 
+    echo "log" >> ${HOMEDIR}/celery_beat.log 
 
     echo "[program:celery]
     command=${HOMEDIR}/env/bin/celery -A $APPNAME worker -l info
@@ -216,7 +216,7 @@ if [[ $is_celery == "Yes" || $is_celery == "Y" || $is_celery == "y" ]]; then
     user=$USER
     autostart=true
     autorestart=true  
-    stdout_logfile=${HOMEDIR}/logs/celery.log  
+    stdout_logfile=${HOMEDIR}/celery.log  
     redirect_stderr=true
     " > /etc/supervisor/conf.d/celery.conf
 
@@ -226,7 +226,7 @@ if [[ $is_celery == "Yes" || $is_celery == "Y" || $is_celery == "y" ]]; then
     user=$USER  
     autostart=true  
     autorestart=true
-    stdout_logfile=${HOMEDIR}logs/celery_beat.log
+    stdout_logfile=${HOMEDIR}/celery_beat.log
     redirect_stderr=true" > /etc/supervisor/conf.d/celery_beat.conf
 fi
 
